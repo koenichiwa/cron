@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::error::{Error, ErrorKind};
 use crate::ordinal::{Ordinal, OrdinalSet};
 use crate::time_unit::TimeUnitField;
 use std::borrow::Cow;
@@ -13,7 +13,7 @@ pub struct Months{
 
 impl TimeUnitField for Months {
     fn from_optional_ordinal_set(ordinal_set: Option<OrdinalSet>) -> Self {
-        Months{
+        Self {
             ordinals: ordinal_set
         }
     }
@@ -51,14 +51,14 @@ impl TimeUnitField for Months {
     }
     fn ordinals(&self) -> &OrdinalSet {
         match &self.ordinals {
-            Some(ordinal_set) => &ordinal_set,
+            Some(ordinal_set) => ordinal_set,
             None => &ALL
         }
     }
 }
 
 impl PartialEq for Months {
-    fn eq(&self, other: &Months) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.ordinals() == other.ordinals()
     }
 }

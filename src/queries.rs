@@ -22,8 +22,8 @@ impl<Z> NextAfterQuery<Z>
 where
     Z: TimeZone,
 {
-    pub fn from(after: &DateTime<Z>) -> NextAfterQuery<Z> {
-        NextAfterQuery {
+    pub fn from(after: &DateTime<Z>) -> Self {
+        Self {
             initial_datetime: after.clone() + Duration::seconds(1),
             first_month: true,
             first_day_of_month: true,
@@ -119,8 +119,8 @@ impl<Z> PrevFromQuery<Z>
 where
     Z: TimeZone,
 {
-    pub fn from(before: &DateTime<Z>) -> PrevFromQuery<Z> {
-        PrevFromQuery {
+    pub fn from(before: &DateTime<Z>) -> Self{
+        Self {
             initial_datetime: before.clone() - Duration::seconds(1),
             first_month: true,
             first_day_of_month: true,

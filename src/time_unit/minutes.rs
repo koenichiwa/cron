@@ -12,7 +12,7 @@ pub struct Minutes{
 
 impl TimeUnitField for Minutes {
     fn from_optional_ordinal_set(ordinal_set: Option<OrdinalSet>) -> Self {
-        Minutes{
+        Self {
             ordinals: ordinal_set
         }
     }
@@ -27,14 +27,14 @@ impl TimeUnitField for Minutes {
     }
     fn ordinals(&self) -> &OrdinalSet {
         match &self.ordinals {
-            Some(ordinal_set) => &ordinal_set,
+            Some(ordinal_set) => ordinal_set,
             None => &ALL
         }
     }
 }
 
 impl PartialEq for Minutes {
-    fn eq(&self, other: &Minutes) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.ordinals() == other.ordinals()
     }
 }

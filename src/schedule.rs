@@ -3,13 +3,27 @@ use chrono::offset::TimeZone;
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use std::collections::Bound::{Included, Unbounded};
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::str::{self, FromStr};
 
-use crate::time_unit::*;
-use crate::ordinal::*;
-use crate::queries::*;
+use crate::error::{Error, ErrorKind};
+use crate::time_unit::{DaysOfMonth, Hours, Minutes, Months, Seconds, TimeUnitField, TimeUnitSpec};
+use crate::schedulefields::ScheduleFields;
+use crate::ordinal::Ordinal;
+use crate::queries::{NextAfterQuery, PrevFromQuery};
+use crate::parsing::parse;
+
+impl FromStr for Schedule {
+    type Err = Error;
+    fn from_str(expression: &str) -> Result<Self, Self::Err> {
+        match parse(expression) {
+            Ok((_, schedule_fields)) => { Ok(Self::new(String::from(expression), schedule_fields)) } // Extract from nom tuple
+            Err(_) => Err(ErrorKind::Expression("Invalid cron expression.".to_owned()).into()), //TODO: Details
+        }
+    }
+}
 
 impl From<Schedule> for String {
-    fn from(schedule: Schedule) -> String {
+    fn from(schedule: Schedule) -> Self {
         schedule.source
     }
 }
@@ -21,11 +35,11 @@ pub struct Schedule {
 }
 
 impl Schedule {
-    pub(crate) fn new(
+    const fn new(
         source: String,
         fields: ScheduleFields,
-    ) -> Schedule {
-        Schedule {
+    ) -> Self {
+        Self {
             source,
             fields,
         }
@@ -38,19 +52,19 @@ impl Schedule {
         let mut query = NextAfterQuery::from(after);
         for year in self
             .fields
-            .years
+            .years()
             .ordinals()
             .range((Included(query.year_lower_bound()), Unbounded))
             .cloned()
         {
             let month_start = query.month_lower_bound();
-            if !self.fields.months.ordinals().contains(&month_start) {
+            if !self.fields.months().ordinals().contains(&month_start) {
                 query.reset_month();
             }
             let month_range = (Included(month_start), Included(Months::inclusive_max()));
-            for month in self.fields.months.ordinals().range(month_range).cloned() {
+            for month in self.fields.months().ordinals().range(month_range).cloned() {
                 let day_of_month_start = query.day_of_month_lower_bound();
-                if !self.fields.days_of_month.ordinals().contains(&day_of_month_start) {
+                if !self.fields.days_of_month().ordinals().contains(&day_of_month_start) {
                     query.reset_day_of_month();
                 }
                 let day_of_month_end = days_in_month(month, year);
@@ -58,34 +72,34 @@ impl Schedule {
 
                 'day_loop: for day_of_month in self
                     .fields
-                    .days_of_month
+                    .days_of_month()
                     .ordinals()
                     .range(day_of_month_range)
                     .cloned()
                 {
                     let hour_start = query.hour_lower_bound();
-                    if !self.fields.hours.ordinals().contains(&hour_start) {
+                    if !self.fields.hours().ordinals().contains(&hour_start) {
                         query.reset_hour();
                     }
                     let hour_range = (Included(hour_start), Included(Hours::inclusive_max()));
 
-                    for hour in self.fields.hours.ordinals().range(hour_range).cloned() {
+                    for hour in self.fields.hours().ordinals().range(hour_range).cloned() {
                         let minute_start = query.minute_lower_bound();
-                        if !self.fields.minutes.ordinals().contains(&minute_start) {
+                        if !self.fields.minutes().ordinals().contains(&minute_start) {
                             query.reset_minute();
                         }
                         let minute_range =
                             (Included(minute_start), Included(Minutes::inclusive_max()));
 
-                        for minute in self.fields.minutes.ordinals().range(minute_range).cloned() {
+                        for minute in self.fields.minutes().ordinals().range(minute_range).cloned() {
                             let second_start = query.second_lower_bound();
-                            if !self.fields.seconds.ordinals().contains(&second_start) {
+                            if !self.fields.seconds().ordinals().contains(&second_start) {
                                 query.reset_second();
                             }
                             let second_range =
                                 (Included(second_start), Included(Seconds::inclusive_max()));
 
-                            for second in self.fields.seconds.ordinals().range(second_range).cloned() {
+                            for second in self.fields.seconds().ordinals().range(second_range).cloned() {
                                 let timezone = after.timezone();
                                 let candidate = if let Some(candidate) = timezone
                                     .ymd(year as i32, month, day_of_month)
@@ -97,7 +111,7 @@ impl Schedule {
                                 };
                                 if !self
                                     .fields
-                                    .days_of_week
+                                    .days_of_week()
                                     .ordinals()
                                     .contains(&candidate.weekday().number_from_sunday())
                                 {
@@ -126,7 +140,7 @@ impl Schedule {
         let mut query = PrevFromQuery::from(before);
         for year in self
             .fields
-            .years
+            .years()
             .ordinals()
             .range((Unbounded, Included(query.year_upper_bound())))
             .rev()
@@ -134,14 +148,14 @@ impl Schedule {
         {
             let month_start = query.month_upper_bound();
 
-            if !self.fields.months.ordinals().contains(&month_start) {
+            if !self.fields.months().ordinals().contains(&month_start) {
                 query.reset_month();
             }
             let month_range = (Included(Months::inclusive_min()), Included(month_start));
 
-            for month in self.fields.months.ordinals().range(month_range).rev().cloned() {
+            for month in self.fields.months().ordinals().range(month_range).rev().cloned() {
                 let day_of_month_end = query.day_of_month_upper_bound();
-                if !self.fields.days_of_month.ordinals().contains(&day_of_month_end) {
+                if !self.fields.days_of_month().ordinals().contains(&day_of_month_end) {
                     query.reset_day_of_month();
                 }
 
@@ -154,35 +168,35 @@ impl Schedule {
 
                 'day_loop: for day_of_month in self
                     .fields
-                    .days_of_month
+                    .days_of_month()
                     .ordinals()
                     .range(day_of_month_range)
                     .rev()
                     .cloned()
                 {
                     let hour_start = query.hour_upper_bound();
-                    if !self.fields.hours.ordinals().contains(&hour_start) {
+                    if !self.fields.hours().ordinals().contains(&hour_start) {
                         query.reset_hour();
                     }
                     let hour_range = (Included(Hours::inclusive_min()), Included(hour_start));
 
-                    for hour in self.fields.hours.ordinals().range(hour_range).rev().cloned() {
+                    for hour in self.fields.hours().ordinals().range(hour_range).rev().cloned() {
                         let minute_start = query.minute_upper_bound();
-                        if !self.fields.minutes.ordinals().contains(&minute_start) {
+                        if !self.fields.minutes().ordinals().contains(&minute_start) {
                             query.reset_minute();
                         }
                         let minute_range =
                             (Included(Minutes::inclusive_min()), Included(minute_start));
 
-                        for minute in self.fields.minutes.ordinals().range(minute_range).rev().cloned() {
+                        for minute in self.fields.minutes().ordinals().range(minute_range).rev().cloned() {
                             let second_start = query.second_upper_bound();
-                            if !self.fields.seconds.ordinals().contains(&second_start) {
+                            if !self.fields.seconds().ordinals().contains(&second_start) {
                                 query.reset_second();
                             }
                             let second_range =
                                 (Included(Seconds::inclusive_min()), Included(second_start));
 
-                            for second in self.fields.seconds.ordinals().range(second_range).rev().cloned()
+                            for second in self.fields.seconds().ordinals().range(second_range).rev().cloned()
                             {
                                 let timezone = before.timezone();
                                 let candidate = if let Some(candidate) = timezone
@@ -195,7 +209,7 @@ impl Schedule {
                                 };
                                 if !self
                                     .fields
-                                    .days_of_week
+                                    .days_of_week()
                                     .ordinals()
                                     .contains(&candidate.weekday().number_from_sunday())
                                 {
@@ -217,9 +231,9 @@ impl Schedule {
         None
     }
 
-    /// Provides an iterator which will return each DateTime that matches the schedule starting with
+    /// Provides an iterator which will return each [`DateTime`] that matches the schedule starting with
     /// the current time if applicable.
-    pub fn upcoming<Z>(&self, timezone: Z) -> ScheduleIterator<Z>
+    pub fn upcoming<Z>(&self, timezone: &Z) -> ScheduleIterator<Z>
     where
         Z: TimeZone,
     {
@@ -234,62 +248,62 @@ impl Schedule {
         ScheduleIterator::new(self, after)
     }
 
-    pub fn includes<Z>(&self, date_time: DateTime<Z>) -> bool
+    pub fn includes<Z>(&self, date_time: &DateTime<Z>) -> bool
     where
         Z: TimeZone,
     {
-        self.fields.years.includes(date_time.year() as Ordinal)  &&
-        self.fields.months.includes(date_time.month() as Ordinal) &&
-        self.fields.days_of_week.includes(date_time.weekday().number_from_sunday()) &&
-        self.fields.days_of_month.includes(date_time.day() as Ordinal) &&
-        self.fields.hours.includes(date_time.hour() as Ordinal) &&
-        self.fields.minutes.includes(date_time.minute() as Ordinal) &&
-        self.fields.minutes.includes(date_time.second() as Ordinal)
+        self.fields.years().includes(date_time.year() as Ordinal)  &&
+        self.fields.months().includes(date_time.month() as Ordinal) &&
+        self.fields.days_of_week().includes(date_time.weekday().number_from_sunday()) &&
+        self.fields.days_of_month().includes(date_time.day() as Ordinal) &&
+        self.fields.hours().includes(date_time.hour() as Ordinal) &&
+        self.fields.minutes().includes(date_time.minute() as Ordinal) &&
+        self.fields.seconds().includes(date_time.second() as Ordinal)
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the years included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the years included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn years(&self) -> &impl TimeUnitSpec {
-        &self.fields.years
+    #[must_use] pub fn years(&self) -> &impl TimeUnitSpec {
+        self.fields.years()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the months of the year included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the months of the year included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn months(&self) -> &impl TimeUnitSpec {
-        &self.fields.months
+    #[must_use] pub fn months(&self) -> &impl TimeUnitSpec {
+        self.fields.months()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the days of the month included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the days of the month included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn days_of_month(&self) -> &impl TimeUnitSpec {
-        &self.fields.days_of_month
+    #[must_use] pub fn days_of_month(&self) -> &impl TimeUnitSpec {
+        self.fields.days_of_month()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the days of the week included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the days of the week included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn days_of_week(&self) -> &impl TimeUnitSpec {
-        &self.fields.days_of_week
+    #[must_use] pub fn days_of_week(&self) -> &impl TimeUnitSpec {
+        self.fields.days_of_week()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the hours of the day included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the hours of the day included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn hours(&self) -> &impl TimeUnitSpec {
-        &self.fields.hours
+    #[must_use] pub fn hours(&self) -> &impl TimeUnitSpec {
+        self.fields.hours()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the minutes of the hour included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the minutes of the hour included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn minutes(&self) -> &impl TimeUnitSpec {
-        &self.fields.minutes
+    #[must_use] pub fn minutes(&self) -> &impl TimeUnitSpec {
+        self.fields.minutes()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the seconds of the minute included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the seconds of the minute included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn seconds(&self) -> &impl TimeUnitSpec {
-        &self.fields.seconds
+    #[must_use] pub fn seconds(&self) -> &impl TimeUnitSpec {
+        self.fields.seconds()
     }
 
-    pub fn timeunitspec_eq(&self, other: &Schedule) -> bool {
+    #[must_use] pub fn timeunitspec_eq(&self, other: &Self) -> bool {
         self.fields == other.fields
     }
 }
@@ -301,41 +315,8 @@ impl Display for Schedule {
 }
 
 impl PartialEq for Schedule {
-    fn eq(&self, other: &Schedule) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.source == other.source
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ScheduleFields {
-    years: Years,
-    days_of_week: DaysOfWeek,
-    months: Months,
-    days_of_month: DaysOfMonth,
-    hours: Hours,
-    minutes: Minutes,
-    seconds: Seconds,
-}
-
-impl ScheduleFields {
-    pub(crate) fn new(
-        seconds: Seconds,
-        minutes: Minutes,
-        hours: Hours,
-        days_of_month: DaysOfMonth,
-        months: Months,
-        days_of_week: DaysOfWeek,
-        years: Years,
-    ) -> ScheduleFields {
-        ScheduleFields {
-            years,
-            days_of_week,
-            months,
-            days_of_month,
-            hours,
-            minutes,
-            seconds,
-        }
     }
 }
 
@@ -401,14 +382,14 @@ where
     }
 }
 
-fn is_leap_year(year: Ordinal) -> bool {
+const fn is_leap_year(year: Ordinal) -> bool {
     let by_four = year % 4 == 0;
     let by_hundred = year % 100 == 0;
     let by_four_hundred = year % 400 == 0;
     by_four && ((!by_hundred) || by_four_hundred)
 }
 
-fn days_in_month(month: Ordinal, year: Ordinal) -> u32 {
+const fn days_in_month(month: Ordinal, year: Ordinal) -> u32 {
     let is_leap_year = is_leap_year(year);
     match month {
         9 | 4 | 6 | 11 => 30,
@@ -464,7 +445,7 @@ mod test {
     fn test_upcoming_utc() {
         let expression = "0 0,30 0,6,12,18 1,15 Jan-March Thurs";
         let schedule = Schedule::from_str(expression).unwrap();
-        let mut upcoming = schedule.upcoming(Utc);
+        let mut upcoming = schedule.upcoming(&Utc);
         let next1 = upcoming.next();
         assert!(next1.is_some());
         let next2 = upcoming.next();
@@ -480,7 +461,7 @@ mod test {
     fn test_upcoming_rev_utc() {
         let expression = "0 0,30 0,6,12,18 1,15 Jan-March Thurs";
         let schedule = Schedule::from_str(expression).unwrap();
-        let mut upcoming = schedule.upcoming(Utc).rev();
+        let mut upcoming = schedule.upcoming(&Utc).rev();
         let prev1 = upcoming.next();
         assert!(prev1.is_some());
         let prev2 = upcoming.next();
@@ -497,7 +478,7 @@ mod test {
         use chrono::Local;
         let expression = "0 0,30 0,6,12,18 1,15 Jan-March Thurs";
         let schedule = Schedule::from_str(expression).unwrap();
-        let mut upcoming = schedule.upcoming(Local);
+        let mut upcoming = schedule.upcoming(&Local);
         let next1 = upcoming.next();
         assert!(next1.is_some());
         let next2 = upcoming.next();

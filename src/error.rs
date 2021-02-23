@@ -21,7 +21,7 @@ impl fmt::Display for Error {
 impl error::Error for Error {}
 
 impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Error {
-        Error { kind }
+    fn from(kind: ErrorKind) -> Self {
+        Self { kind }
     }
 }

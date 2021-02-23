@@ -1,4 +1,4 @@
-use crate::ordinal::*;
+use crate::ordinal::{Ordinal};
 
 #[derive(Debug, PartialEq)]
 pub enum Specifier {

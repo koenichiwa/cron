@@ -15,7 +15,7 @@ mod tests {
         let expression = "0   30   9,12,15     1,15       May-Aug  Mon,Wed,Fri  2018/2";
         let schedule = Schedule::from_str(expression).unwrap();
         println!("README: Upcoming fire times for '{}':", expression);
-        for datetime in schedule.upcoming(Utc).take(10) {
+        for datetime in schedule.upcoming(&Utc).take(10) {
             println!("README: -> {}", datetime);
         }
     }
@@ -25,7 +25,7 @@ mod tests {
         let expression = "* * * * * * *";
         let schedule = Schedule::from_str(expression).unwrap();
         println!("All stars: Upcoming fire times for '{}':", expression);
-        for datetime in schedule.upcoming(Utc).take(10) {
+        for datetime in schedule.upcoming(&Utc).take(10) {
             println!("All stars: -> {}", datetime);
         }
     }
@@ -59,7 +59,7 @@ mod tests {
         let expression = "0 2,17,51 1-3,6,9-11 4,29 2,3,7 Wed";
         let schedule = Schedule::from_str(expression).unwrap();
         println!("Upcoming fire times for '{}':", expression);
-        for datetime in schedule.upcoming(Utc).take(12) {
+        for datetime in schedule.upcoming(&Utc).take(12) {
             println!("-> {}", datetime);
         }
     }
@@ -87,7 +87,7 @@ mod tests {
         let expression = "1 2 3 4 10 Fri";
         let schedule = Schedule::from_str(expression).unwrap();
         let next = schedule
-            .upcoming(Utc)
+            .upcoming(&Utc)
             .next()
             .expect("There was no upcoming fire time.");
         println!("Next fire time: {}", next.to_rfc3339());
@@ -98,7 +98,7 @@ mod tests {
         let expression = "1 2 3 4 10 Fri";
         let schedule = Schedule::from_str(expression).unwrap();
         let prev = schedule
-            .upcoming(Utc)
+            .upcoming(&Utc)
             .rev()
             .next()
             .expect("There was no previous upcoming fire time.");
@@ -515,7 +515,7 @@ mod tests {
         let schedule_tz: Tz = "Europe/London".parse().unwrap();
         let included = schedule_tz.ymd(2020, 1, 12).and_hms(0, 0, 0);
         let not_included = schedule_tz.ymd(2020, 1, 11).and_hms(0, 0, 0);
-        assert!(schedule.includes(included));
-        assert!(!schedule.includes(not_included));
+        assert!(schedule.includes(&included));
+        assert!(!schedule.includes(&not_included));
     }
 }

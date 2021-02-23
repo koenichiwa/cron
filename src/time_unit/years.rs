@@ -12,7 +12,7 @@ pub struct Years{
 
 impl TimeUnitField for Years {
     fn from_optional_ordinal_set(ordinal_set: Option<OrdinalSet>) -> Self {
-        Years{
+        Self {
             ordinals: ordinal_set
         }
     }
@@ -30,14 +30,14 @@ impl TimeUnitField for Years {
     }
     fn ordinals(&self) -> &OrdinalSet {
         match &self.ordinals {
-            Some(ordinal_set) => &ordinal_set,
+            Some(ordinal_set) => ordinal_set,
             None => &ALL
         }
     }
 }
 
 impl PartialEq for Years {
-    fn eq(&self, other: &Years) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.ordinals() == other.ordinals()
     }
 }

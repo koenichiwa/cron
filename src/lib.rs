@@ -1,5 +1,12 @@
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
+#![warn(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo,
+)]
+#![allow(clippy::module_name_repetitions)]
 
 //! A cron expression parser and schedule explorer
 //! # Example
@@ -46,6 +53,8 @@ mod ordinal;
 mod specifier;
 mod queries;
 mod parsing;
+mod field;
+mod schedulefields;
 
 pub use crate::schedule::Schedule;
 pub use crate::time_unit::TimeUnitSpec;

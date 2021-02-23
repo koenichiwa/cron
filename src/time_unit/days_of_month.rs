@@ -12,7 +12,7 @@ pub struct DaysOfMonth{
 
 impl TimeUnitField for DaysOfMonth {
     fn from_optional_ordinal_set(ordinal_set: Option<OrdinalSet>) -> Self {
-        DaysOfMonth {
+        Self {
             ordinals: ordinal_set
         }
     }
@@ -27,14 +27,14 @@ impl TimeUnitField for DaysOfMonth {
     }
     fn ordinals(&self) -> &OrdinalSet {
         match &self.ordinals {
-            Some(ordinal_set) => &ordinal_set,
+            Some(ordinal_set) => ordinal_set,
             None => &ALL
         }
     }
 }
 
 impl PartialEq for DaysOfMonth {
-    fn eq(&self, other: &DaysOfMonth) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.ordinals() == other.ordinals()
     }
 }
