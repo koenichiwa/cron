@@ -25,7 +25,7 @@ pub struct Schedule {
 }
 
 impl Schedule {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         source: String,
         fields: ScheduleFields,
     ) -> Schedule {
@@ -244,7 +244,7 @@ impl Schedule {
     }
 
     #[allow(clippy::cast_sign_loss)]
-    pub fn includes<Z>(&self, date_time: DateTime<Z>) -> bool
+    pub fn includes<Z>(&self, date_time: &DateTime<Z>) -> bool
     where
         Z: TimeZone,
     {

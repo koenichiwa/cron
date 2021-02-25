@@ -15,7 +15,7 @@ pub struct ScheduleFields {
 
 impl ScheduleFields {
     // Constructor
-    pub fn new(
+    pub const fn new(
         seconds: Seconds,
         minutes: Minutes,
         hours: Hours,
@@ -36,13 +36,13 @@ impl ScheduleFields {
     }
 
     // Getters
-    pub fn years(&self) -> &Years { &self.years }
-    pub fn months(&self) -> &Months { &self.months }
-    pub fn days_of_month(&self) -> &DaysOfMonth { &self.days_of_month }
-    pub fn days_of_week(&self) -> &DaysOfWeek { &self.days_of_week }
-    pub fn hours(&self) -> &Hours { &self.hours }
-    pub fn minutes(&self) -> &Minutes { &self.minutes }
-    pub fn seconds(&self) -> &Seconds { &self.seconds }
+    pub const fn years(&self) -> &Years { &self.years }
+    pub const fn months(&self) -> &Months { &self.months }
+    pub const fn days_of_month(&self) -> &DaysOfMonth { &self.days_of_month }
+    pub const fn days_of_week(&self) -> &DaysOfWeek { &self.days_of_week }
+    pub const fn hours(&self) -> &Hours { &self.hours }
+    pub const fn minutes(&self) -> &Minutes { &self.minutes }
+    pub const fn seconds(&self) -> &Seconds { &self.seconds }
 
     pub fn from_field_list(fields: Vec<Field>) -> Result<Self, Error> {
         let number_of_fields = fields.len();

@@ -515,7 +515,7 @@ mod tests {
         let schedule_tz: Tz = "Europe/London".parse().unwrap();
         let included = schedule_tz.ymd(2020, 1, 12).and_hms(0, 0, 0);
         let not_included = schedule_tz.ymd(2020, 1, 11).and_hms(0, 0, 0);
-        assert!(schedule.includes(included));
-        assert!(!schedule.includes(not_included));
+        assert!(schedule.includes(&included));
+        assert!(!schedule.includes(&not_included));
     }
 }
