@@ -7,7 +7,6 @@ use std::iter;
 
 use crate::time_unit::*;
 use crate::ordinal::*;
-use crate::queries::*;
 use crate::schedulefields::ScheduleFields;
 use crate::error::{Error, ErrorKind};
 use crate::parsing::parse;
@@ -41,21 +40,21 @@ impl Schedule {
     {
         self.years()
             .iter()
-            .skip_while(|year| *year < after.year() as u32)
+            .skip_while(|year| **year < after.year() as u32)
             .flat_map(|year| {
                 iter::repeat(
-                    after.with_year(year as i32).map(|d| d.trunc_subsecs(0))
+                    after.with_year(*year as i32).map(|d| d.trunc_subsecs(0))
                 )
                 .zip(self.months().iter())
             })
             .skip_while(|(date, month)| {
                 date.as_ref() < Some(after) ||
-                (date.as_ref() == Some(after) && *month < after.month())
+                (date.as_ref() == Some(after) && **month < after.month())
             })
             .flat_map(|(date, month)| {
-                let date_with_month = date.clone().and_then(|d| d.with_month(month));
+                let date_with_month = date.clone().and_then(|d| d.with_month(*month));
                 if date_with_month == None { // If after is XXXX-01-31 turning it to the next month would create XXX-02-31 which doesn't exist
-                    iter::repeat(date.and_then(|d| d.with_day(1)).and_then(|m| m.with_month(month)))
+                    iter::repeat(date.and_then(|d| d.with_day(1)).and_then(|m| m.with_month(*month)))
                     .zip(self.days_of_month().iter())
                 } else {
                     iter::repeat(date_with_month)
@@ -64,10 +63,10 @@ impl Schedule {
             })
             .skip_while(|(date, day)| {
                 date.as_ref() < Some(after) ||
-                (date.as_ref() == Some(after) && *day < after.day())
+                (date.as_ref() == Some(after) && **day < after.day())
             })
             .map(|(date, day)| {
-                date.and_then(|d| d.with_day(day))
+                date.and_then(|d| d.with_day(*day))
             })
             .filter(|date| {
                 date.as_ref()
@@ -78,30 +77,30 @@ impl Schedule {
             })
             .skip_while(|(date, hour)| {
                 date.as_ref() < Some(after) ||
-                (date.as_ref() == Some(after) && *hour < after.hour())
+                (date.as_ref() == Some(after) && **hour < after.hour())
             })
             .flat_map(|(date, hour)| {
                 iter::repeat(
-                    date.and_then(|d| d.with_hour(hour))
+                    date.and_then(|d| d.with_hour(*hour))
                 )
                 .zip(self.minutes().iter())
             })
             .skip_while(|(date, minute)| {
                 date.as_ref() < Some(after) ||
-                (date.as_ref() == Some(after) && *minute < after.minute())
+                (date.as_ref() == Some(after) && **minute < after.minute())
             })
             .flat_map(|(date, minute)| {
                 iter::repeat(
-                    date.and_then(|d| d.with_minute(minute))
+                    date.and_then(|d| d.with_minute(*minute))
                 )
                 .zip(self.seconds().iter())
             })
             .skip_while(|(date, second)| {
                 date.as_ref() < Some(after) ||
-                (date.as_ref() == Some(after) && *second <= after.second())
+                (date.as_ref() == Some(after) && **second <= after.second())
             })
             .map(|(date, second)| {
-                date.and_then(|d| d.with_second(second))
+                date.and_then(|d| d.with_second(*second))
             })
             .next()
             .flatten()
@@ -114,23 +113,23 @@ impl Schedule {
         self.years()
             .iter()
             .rev()
-            .skip_while(|year| *year < before.year() as u32)
+            .skip_while(|year| **year < before.year() as u32)
             .flat_map(|year| {
                 iter::repeat(
-                    before.with_year(year as i32).map(|d| d.trunc_subsecs(0))
+                    before.with_year(*year as i32).map(|d| d.trunc_subsecs(0))
                 )
                 .zip(self.months().iter().rev())
             })
             .skip_while(|(date, month)| {
                 date.as_ref() > Some(before) ||
-                (date.as_ref() == Some(before) && *month > before.month())
+                (date.as_ref() == Some(before) && **month > before.month())
             })
             .flat_map(|(date, month)| {
                 // If after is XXXX-03-31 turning it to the next month would create XXX-02-31 which doesn't exist
                 // So if it fails, we try to make a datetime again
                 // It tries again 4 times. for 31, 30, 29 and 28
                 for decr_day in 0..4 {
-                    let date_with_month = date.clone().and_then(|d| d.with_day(d.day()-decr_day)).and_then(|m| m.with_month(month));
+                    let date_with_month = date.clone().and_then(|d| d.with_day(d.day()-decr_day)).and_then(|m| m.with_month(*month));
                     if date_with_month != None {
                         return iter::repeat(date_with_month).zip(self.days_of_month().iter().rev())
                     }
@@ -139,10 +138,10 @@ impl Schedule {
             })
             .skip_while(|(date, day)| {
                 date.as_ref() > Some(before) ||
-                (date.as_ref() == Some(before) && *day > before.day())
+                (date.as_ref() == Some(before) && **day > before.day())
             })
             .map(|(date, day)| {
-                date.and_then(|d| d.with_day(day))
+                date.and_then(|d| d.with_day(*day))
             })
             .filter(|date| {
                 date.as_ref()
@@ -154,30 +153,30 @@ impl Schedule {
             })
             .skip_while(|(date, hour)| {
                 date.as_ref() > Some(before) ||
-                (date.as_ref() == Some(before) && *hour > before.hour())
+                (date.as_ref() == Some(before) && **hour > before.hour())
             })
             .flat_map(|(date, hour)| {
                 iter::repeat(
-                    date.and_then(|d| d.with_hour(hour))
+                    date.and_then(|d| d.with_hour(*hour))
                 )
                 .zip(self.minutes().iter().rev())
             })
             .skip_while(|(date, minute)| {
                 date.as_ref() > Some(before) ||
-                (date.as_ref() == Some(before) && *minute > before.minute())
+                (date.as_ref() == Some(before) && **minute > before.minute())
             })
             .flat_map(|(date, minute)| {
                 iter::repeat(
-                    date.and_then(|d| d.with_minute(minute))
+                    date.and_then(|d| d.with_minute(*minute))
                 )
                 .zip(self.seconds().iter().rev())
             })
             .skip_while(|(date, second)| {
                 date.as_ref() > Some(before) ||
-                (date.as_ref() == Some(before) && *second >= before.second())
+                (date.as_ref() == Some(before) && **second >= before.second())
             })
             .map(|(date, second)| {
-                date.and_then(|d| d.with_second(second))
+                date.and_then(|d| d.with_second(*second))
             })
             .next()
             .flatten()
