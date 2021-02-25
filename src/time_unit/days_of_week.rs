@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::error::{Error, ErrorKind};
 use crate::ordinal::{Ordinal, OrdinalSet};
 use crate::time_unit::TimeUnitField;
 use std::borrow::Cow;
@@ -48,7 +48,7 @@ impl TimeUnitField for DaysOfWeek {
     }
     fn ordinals(&self) -> &OrdinalSet {
         match &self.ordinals {
-            Some(ordinal_set) => &ordinal_set,
+            Some(ordinal_set) => ordinal_set,
             None => &ALL
         }
     }

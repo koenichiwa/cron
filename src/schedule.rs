@@ -5,12 +5,12 @@ use std::collections::Bound::{Included, Unbounded};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
 
-use crate::time_unit::*;
-use crate::ordinal::*;
-use crate::queries::*;
+use crate::time_unit::{DaysOfMonth, Hours, Minutes, Months, Seconds, TimeUnitField, TimeUnitSpec};
+use crate::queries::{NextAfterQuery, PrevFromQuery};
 use crate::schedulefields::ScheduleFields;
 use crate::error::{Error, ErrorKind};
 use crate::parsing::parse;
+use crate::ordinal::Ordinal;
 
 impl From<Schedule> for String {
     fn from(schedule: Schedule) -> String {
@@ -91,6 +91,8 @@ impl Schedule {
 
                             for second in self.fields.seconds().ordinals().range(second_range).cloned() {
                                 let timezone = after.timezone();
+
+                                #[allow(clippy::cast_possible_wrap)]
                                 let candidate = if let Some(candidate) = timezone
                                     .ymd(year as i32, month, day_of_month)
                                     .and_hms_opt(hour, minute, second)
@@ -189,6 +191,8 @@ impl Schedule {
                             for second in self.fields.seconds().ordinals().range(second_range).rev().cloned()
                             {
                                 let timezone = before.timezone();
+
+                                #[allow(clippy::cast_possible_wrap)]
                                 let candidate = if let Some(candidate) = timezone
                                     .ymd(year as i32, month, day_of_month)
                                     .and_hms_opt(hour, minute, second)
@@ -221,8 +225,9 @@ impl Schedule {
         None
     }
 
-    /// Provides an iterator which will return each DateTime that matches the schedule starting with
+    /// Provides an iterator which will return each [`DateTime`] that matches the schedule starting with
     /// the current time if applicable.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn upcoming<Z>(&self, timezone: Z) -> ScheduleIterator<Z>
     where
         Z: TimeZone,
@@ -238,62 +243,63 @@ impl Schedule {
         ScheduleIterator::new(self, after)
     }
 
+    #[allow(clippy::cast_sign_loss)]
     pub fn includes<Z>(&self, date_time: DateTime<Z>) -> bool
     where
         Z: TimeZone,
     {
         self.fields.years().includes(date_time.year() as Ordinal)  &&
-        self.fields.months().includes(date_time.month() as Ordinal) &&
+        self.fields.months().includes(date_time.month()) &&
         self.fields.days_of_week().includes(date_time.weekday().number_from_sunday()) &&
-        self.fields.days_of_month().includes(date_time.day() as Ordinal) &&
-        self.fields.hours().includes(date_time.hour() as Ordinal) &&
-        self.fields.minutes().includes(date_time.minute() as Ordinal) &&
-        self.fields.seconds().includes(date_time.second() as Ordinal)
+        self.fields.days_of_month().includes(date_time.day()) &&
+        self.fields.hours().includes(date_time.hour()) &&
+        self.fields.minutes().includes(date_time.minute()) &&
+        self.fields.seconds().includes(date_time.second())
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the years included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the years included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn years(&self) -> &impl TimeUnitSpec {
+    #[must_use] pub fn years(&self) -> &impl TimeUnitSpec {
         self.fields.years()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the months of the year included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the months of the year included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn months(&self) -> &impl TimeUnitSpec {
+    #[must_use] pub fn months(&self) -> &impl TimeUnitSpec {
         self.fields.months()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the days of the month included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the days of the month included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn days_of_month(&self) -> &impl TimeUnitSpec {
+    #[must_use] pub fn days_of_month(&self) -> &impl TimeUnitSpec {
         self.fields.days_of_month()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the days of the week included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the days of the week included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn days_of_week(&self) -> &impl TimeUnitSpec {
+    #[must_use] pub fn days_of_week(&self) -> &impl TimeUnitSpec {
         self.fields.days_of_week()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the hours of the day included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the hours of the day included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn hours(&self) -> &impl TimeUnitSpec {
+    #[must_use] pub fn hours(&self) -> &impl TimeUnitSpec {
         self.fields.hours()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the minutes of the hour included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the minutes of the hour included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn minutes(&self) -> &impl TimeUnitSpec {
+    #[must_use] pub fn minutes(&self) -> &impl TimeUnitSpec {
         self.fields.minutes()
     }
 
-    /// Returns a [TimeUnitSpec](trait.TimeUnitSpec.html) describing the seconds of the minute included
+    /// Returns a [`TimeUnitSpec`](trait.TimeUnitSpec.html) describing the seconds of the minute included
     /// in this [Schedule](struct.Schedule.html).
-    pub fn seconds(&self) -> &impl TimeUnitSpec {
+    #[must_use] pub fn seconds(&self) -> &impl TimeUnitSpec {
         self.fields.seconds()
     }
 
-    pub fn timeunitspec_eq(&self, other: &Schedule) -> bool {
+    #[must_use] pub fn timeunitspec_eq(&self, other: &Schedule) -> bool {
         self.fields == other.fields
     }
 }
@@ -351,6 +357,7 @@ where
 {
     type Item = DateTime<Z>;
 
+    #[allow(clippy::option_if_let_else)]
     fn next(&mut self) -> Option<DateTime<Z>> {
         if self.is_done {
             return None;
@@ -369,6 +376,7 @@ impl<'a, Z> DoubleEndedIterator for ScheduleIterator<'a, Z>
 where
     Z: TimeZone,
 {
+    #[allow(clippy::option_if_let_else)]
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.is_done {
             return None;
@@ -384,14 +392,14 @@ where
     }
 }
 
-fn is_leap_year(year: Ordinal) -> bool {
+const fn is_leap_year(year: Ordinal) -> bool {
     let by_four = year % 4 == 0;
     let by_hundred = year % 100 == 0;
     let by_four_hundred = year % 400 == 0;
     by_four && ((!by_hundred) || by_four_hundred)
 }
 
-fn days_in_month(month: Ordinal, year: Ordinal) -> u32 {
+const fn days_in_month(month: Ordinal, year: Ordinal) -> u32 {
     let is_leap_year = is_leap_year(year);
     match month {
         9 | 4 | 6 | 11 => 30,

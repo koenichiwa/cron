@@ -1,9 +1,10 @@
+#[allow(clippy::wildcard_imports)]
 use nom::{types::CompleteStr as Input, *};
 
 use crate::schedulefields::ScheduleFields;
 use crate::field::Field;
 use crate::specifier::{RootSpecifier, Specifier};
-use crate::time_unit::*;
+use crate::time_unit::{DaysOfMonth, DaysOfWeek, Hours, Minutes, Months, Seconds, TimeUnitField, Years};
 
 // TODO create ParserBuilder
 pub fn parse(expression: &str) -> Result<(Input, ScheduleFields), Err<Input>> {
@@ -236,7 +237,9 @@ named!(
 );
 
 named!(schedule<Input, ScheduleFields>, alt!(shorthand | longhand));
+
 #[cfg(test)]
+#[allow(clippy::shadow_unrelated)]
 mod test {
     use super::*;
 

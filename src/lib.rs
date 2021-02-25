@@ -1,5 +1,15 @@
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
+#![warn(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo,
+)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::use_self,
+)]
 
 //! A cron expression parser and schedule explorer
 //! # Example

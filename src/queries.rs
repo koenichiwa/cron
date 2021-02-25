@@ -6,6 +6,7 @@ use crate::time_unit::{DaysOfMonth, Hours, Minutes, Months, Seconds, TimeUnitFie
 
 // TODO: Possibility of one query struct?
 
+#[allow(clippy::struct_excessive_bools)]
 pub struct NextAfterQuery<Z>
 where
     Z: TimeZone,
@@ -33,6 +34,7 @@ where
         }
     }
 
+    #[allow(clippy::cast_sign_loss)]
     pub fn year_lower_bound(&self) -> Ordinal {
         // Unlike the other units, years will never wrap around.
         self.initial_datetime.year() as u32
@@ -103,6 +105,7 @@ where
     }
 } // End of impl
 
+#[allow(clippy::struct_excessive_bools)]
 pub struct PrevFromQuery<Z>
 where
     Z: TimeZone,
@@ -130,6 +133,7 @@ where
         }
     }
 
+    #[allow(clippy::cast_sign_loss)]
     pub fn year_upper_bound(&self) -> Ordinal {
         // Unlike the other units, years will never wrap around.
         self.initial_datetime.year() as u32

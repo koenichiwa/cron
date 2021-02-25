@@ -14,9 +14,9 @@ pub use self::months::Months;
 pub use self::seconds::Seconds;
 pub use self::years::Years;
 
-use crate::error::*;
+use crate::error::{Error, ErrorKind};
 use crate::ordinal::{Ordinal, OrdinalSet, OrdinalIter, OrdinalRangeIter};
-use crate::specifier::{RootSpecifier, Specifier};
+use crate::specifier::{RootSpecifier, Specifier, Specifier::{All, NamedRange, Point, Range}};
 use crate::field::{Field, FromField};
 
 use std::borrow::Cow;
@@ -124,7 +124,7 @@ pub trait TimeUnitSpec {
     /// ```
     fn count(&self) -> u32;
 
-    /// Checks if this TimeUnitSpec is defined as all possibilities (thus created with a '*', '?' or in the case of weekdays '1-7')
+    /// Checks if this `TimeUnitSpec` is defined as all possibilities (thus created with a '*', '?' or in the case of weekdays '1-7')
     /// # Example
     /// ```
     /// use cron::{Schedule,TimeUnitSpec};
@@ -155,6 +155,8 @@ where
     {
         TimeUnitField::ordinals(self).range(range).cloned()
     }
+    
+    #[allow(clippy::cast_possible_truncation)]
     fn count(&self) -> u32 {
         self.ordinals().len() as u32
     }
@@ -180,7 +182,7 @@ where
     }
     
     fn supported_ordinals() -> OrdinalSet {
-        (Self::inclusive_min()..Self::inclusive_max() + 1).collect()
+        (Self::inclusive_min()..=Self::inclusive_max()).collect()
     }    
     
     fn all() -> Self {
@@ -223,14 +225,13 @@ where
     }
 
     fn ordinals_from_specifier(specifier: &Specifier) -> Result<OrdinalSet, Error> {
-        use self::Specifier::*;
         //println!("ordinals_from_specifier for {} => {:?}", Self::name(), specifier);
         match *specifier {
             All => Ok(Self::supported_ordinals()),
             Point(ordinal) => Ok((&[ordinal]).iter().cloned().collect()),
             Range(start, end) => {
                 match (Self::validate_ordinal(start), Self::validate_ordinal(end)) {
-                    (Ok(start), Ok(end)) if start <= end => Ok((start..end + 1).collect()),
+                    (Ok(start), Ok(end)) if start <= end => Ok((start..=end).collect()),
                     _ => Err(ErrorKind::Expression(format!(
                         "Invalid range for {}: {}-{}",
                         Self::name(),
@@ -244,7 +245,7 @@ where
                 let start = Self::ordinal_from_name(start_name)?;
                 let end = Self::ordinal_from_name(end_name)?;
                 match (Self::validate_ordinal(start), Self::validate_ordinal(end)) {
-                    (Ok(start), Ok(end)) if start <= end => Ok((start..end + 1).collect()),
+                    (Ok(start), Ok(end)) if start <= end => Ok((start..=end).collect()),
                     _ => Err(ErrorKind::Expression(format!(
                         "Invalid named range for {}: {}-{}",
                         Self::name(),
@@ -259,7 +260,7 @@ where
 
     fn ordinals_from_root_specifier(root_specifier: &RootSpecifier) -> Result<OrdinalSet, Error> {
         let ordinals = match root_specifier {
-            RootSpecifier::Specifier(specifier) => Self::ordinals_from_specifier(&specifier)?,
+            RootSpecifier::Specifier(specifier) => Self::ordinals_from_specifier(specifier)?,
             RootSpecifier::Period(start, step) => {
                 let base_set = match start {
                     // A point prior to a period implies a range whose start is the specified
@@ -268,7 +269,7 @@ where
                         let start = Self::validate_ordinal(*start)?;
                         (start..=Self::inclusive_max()).collect()
                     }
-                    specifier => Self::ordinals_from_specifier(&specifier)?,
+                    specifier => Self::ordinals_from_specifier(specifier)?,
                 };
                 base_set.into_iter().step_by(*step as usize).collect()
             }
